@@ -547,11 +547,9 @@ export class ZoneScene extends Phaser.Scene {
         ...check.missing.filter((id) => !wrongSlots.has(PPE_BY_ID[id].slot)).map((id) => t(`zones.kpp.checkFail.${id}.missing`)),
       ];
       lines[0] = t('zones.kpp.checkFailGreeting', { message: lines[0] });
-      await this.dialog.say('hs', lines);
-      await this.dialog.choose('hs', t('zones.kpp.checkFailOutro'), [{ id: 'back', text: t('zones.kpp.backToWardrobe') }]);
-      this.dialog.hide();
-      Router.goTo('wardrobe');
-      return new Promise(() => {}); // scene is being replaced
+      // no teleport: the player walks back to the wardrobe in this room on their own
+      await this.dialog.say('hs', [...lines, t('zones.kpp.checkFailOutro')]);
+      return;
     }
     Sound.play('correct');
     const S = SCORING.kppPpe;
