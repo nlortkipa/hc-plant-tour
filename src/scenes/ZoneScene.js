@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { W, H, HUD_H, CSS, COLORS, SCORING } from '../config.js';
 import { t, tl } from '../i18n/index.js';
-import { ZONES, TOUR_ZONES, nextLocation } from '../data/zones.js';
+import { ZONES, nextLocation } from '../data/zones.js';
 import { PPE_BY_ID, HAZARD_PPE, checkPpe } from '../data/ppe.js';
 import { GameState } from '../state/GameState.js';
 import { Player } from '../world/Player.js';
@@ -555,10 +555,6 @@ export class ZoneScene extends Phaser.Scene {
     const S = SCORING.kppPpe;
     this.award('kpp.ppe', S.max - S.perMistake * (d.ppeErrors || 0), S.max, 'ppe');
     await this.dialog.say('hs', t('zones.kpp.checkOk'));
-    await this.dialog.say('hs', tl('zones.kpp.rules'));
-    const q = this.zone.question;
-    const ok = await askQuestion(this.dialog, 'hs', 'zones.kpp.question', q, { onWrong: () => GameState.mistake(q.topic) });
-    this.award('kpp.question', ok ? SCORING.kppQuestion.max : 0, SCORING.kppQuestion.max, q.topic);
     d.kppCleared = true;
     GameState.save();
     // open the turnstile, stow carried PPE
@@ -571,7 +567,6 @@ export class ZoneScene extends Phaser.Scene {
     this.updateWorn();
     Sound.play('unlock');
     await this.dialog.say('hs', tl('zones.kpp.outro'));
-    toast(this, t('ui.unlocked', { name: t('locations.crushing') }), 'good', 2600);
   }
 
   async showFact(id) {
@@ -703,13 +698,15 @@ export class ZoneScene extends Phaser.Scene {
       return;
     }
     const next = nextLocation(this.zoneId);
-    if (next === 'final' && !TOUR_ZONES.every((z) => GameState.isComplete(z))) {
-      toast(this, t('final.locked'), 'bad', 2200);
-      return;
-    }
     this.cameras.main.fadeOut(300, 0, 0, 0);
     await new Promise((r) => this.time.delayedCall(320, r));
-    Router.goTo(next);
+    if (!next) {
+      // last level done: the game ends here
+      GameState.finish();
+      Router.start('Result', {}, { hud: false });
+    } else {
+      Router.goTo(next);
+    }
     await new Promise(() => {});
   }
 

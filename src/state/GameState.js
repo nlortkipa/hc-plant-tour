@@ -3,7 +3,6 @@
 // location reported to cmi.core.*), otherwise localStorage.
 
 import { LOCATIONS, TOUR_ZONES, ZONES } from '../data/zones.js';
-import { FINAL_QUESTIONS } from '../data/finalTest.js';
 import { SCORING, PASS_THRESHOLD, STORAGE_KEY } from '../config.js';
 import { connect as connectScorm } from '../lms/scorm.js';
 
@@ -66,7 +65,6 @@ function freshState() {
 export function scoreTable() {
   const rows = [
     { key: 'kpp.ppe', max: SCORING.kppPpe.max, group: 'kpp' },
-    { key: 'kpp.question', max: SCORING.kppQuestion.max, group: 'kpp' },
   ];
   for (const id of TOUR_ZONES) {
     const z = ZONES[id];
@@ -75,7 +73,6 @@ export function scoreTable() {
     if (z.event) rows.push({ key: `${id}.event`, max: SCORING.event.max, group: id });
     rows.push({ key: `${id}.mission`, max: SCORING.mission.max, group: id });
   }
-  for (const q of FINAL_QUESTIONS) rows.push({ key: `final.${q.id}`, max: SCORING.finalQuestion.max, group: 'final' });
   return rows;
 }
 
@@ -181,9 +178,11 @@ class GameStateStore {
       .slice(0, limit);
   }
 
-  resetFinal() {
-    for (const q of FINAL_QUESTIONS) delete this.data.scores[`final.${q.id}`];
-    this.data.final = { done: false, attempts: this.data.final.attempts, answers: {} };
+  /** Ends the game: marks it finished so the LMS gets a final status and "continue" shows results. */
+  finish() {
+    this.data.final.done = true;
+    this.data.finishedAt = this.data.finishedAt || Date.now();
+    this.data.location = 'final';
     this.save();
   }
 

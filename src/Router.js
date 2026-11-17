@@ -1,6 +1,7 @@
 // Scene navigation helpers: travelling between locations, modal overlays and missions.
 import { GameState } from './state/GameState.js';
 import { Sound } from './audio/Sound.js';
+import { LOCATIONS } from './data/zones.js';
 
 let game = null;
 const HUD = 'Hud';
@@ -10,9 +11,10 @@ function mgr() {
 }
 
 function sceneForLocation(loc) {
-  if (loc === 'final') return GameState.data.final.done ? ['Result', {}] : ['FinalTest', {}];
   if (loc === 'wardrobe') return ['Wardrobe', {}];
-  return ['Zone', { id: loc }];
+  if (GameState.data.final.done) return ['Result', {}];
+  // saves from the longer tour may point at a zone that is no longer in the game
+  return ['Zone', { id: LOCATIONS.includes(loc) ? loc : 'kpp' }];
 }
 
 export const Router = {

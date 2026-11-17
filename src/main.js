@@ -12,7 +12,6 @@ import { WardrobeScene } from './scenes/WardrobeScene.js';
 import { ZoneScene } from './scenes/ZoneScene.js';
 import { HudScene } from './scenes/HudScene.js';
 import { MapScene, SettingsScene, HelpScene, InventoryScene, ConfirmScene } from './scenes/Modals.js';
-import { FinalTestScene } from './scenes/FinalTestScene.js';
 import { ResultScene } from './scenes/ResultScene.js';
 import { PathMission } from './scenes/missions/PathMission.js';
 import { SpotMission } from './scenes/missions/SpotMission.js';
@@ -54,7 +53,7 @@ async function start() {
     scene: [
       BootScene, MenuScene, CharacterScene, WardrobeScene, ZoneScene,
       PathMission, SpotMission, DecisionMission, AlarmMission, MatchMission, PalletMission, LoadingMission,
-      FinalTestScene, ResultScene, HudScene,
+      ResultScene, HudScene,
       MapScene, SettingsScene, HelpScene, InventoryScene, ConfirmScene,
     ],
   });

@@ -2,12 +2,12 @@
 // paint each scene. All coordinates are screen pixels in the 1280x720 game space (HUD is y < 56).
 // Texts for every id here live in i18n under `zones.<zoneId>.*`.
 
-export const LOCATIONS = [
-  'kpp', 'crushing', 'rawmill', 'kiln', 'ccr', 'cementmill', 'silos', 'packing', 'logistics', 'final',
-];
+// The game currently consists of the entrance (KPP) only; leaving it through the exit ends the
+// game. The other zone definitions below are kept but are not part of the flow.
+export const LOCATIONS = ['kpp'];
 
-// Zones that have a manager + mission (everything except KPP and the final test).
-export const TOUR_ZONES = ['crushing', 'rawmill', 'kiln', 'ccr', 'cementmill', 'silos', 'packing', 'logistics'];
+// Zones that have a manager + mission (none in the current single-level flow).
+export const TOUR_ZONES = [];
 
 const WALKWAY = { x: 0, y: 440, w: 1280, h: 70 };
 const EXIT = { x: 1236, y: 475 };
@@ -29,12 +29,10 @@ export const ZONES = {
       wardrobe: { x: 225, y: 352 },
       turnstile: { x: 892, y: 438, w: 36, h: 76 },
       facts: [
-        { id: 'board', x: 575, y: 372 },
         { id: 'assembly', x: 560, y: 690 },
       ],
       props: [
         { type: 'booth', x: 60, y: 120, w: 330, h: 210 },
-        { type: 'board', x: 520, y: 250, w: 110, h: 100 },
         { type: 'assembly', x: 520, y: 575, w: 90, h: 95 },
         { type: 'fence', x: 900, y: 160, w: 18, h: 280 },
         { type: 'fence', x: 900, y: 512, w: 18, h: 208 },
