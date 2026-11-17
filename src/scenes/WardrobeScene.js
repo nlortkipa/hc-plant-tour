@@ -7,6 +7,11 @@ import { FocusManager } from '../ui/Focus.js';
 import { GameState } from '../state/GameState.js';
 import { PPE_BY_ID, WARDROBE_ORDER } from '../data/ppe.js';
 import { playerTexture } from '../art/textures.js';
+import { CharAnimator } from '../world/CharAnimator.js';
+import { getRenderScale } from '../display.js';
+
+const PREVIEW_SIZE = 4;
+const PREVIEW_RES = Math.min(8, Math.ceil(PREVIEW_SIZE * getRenderScale()));
 import { Router } from '../Router.js';
 
 class ItemCard extends Phaser.GameObjects.Container {
@@ -91,7 +96,8 @@ export class WardrobeScene extends Phaser.Scene {
     // character preview
     panel(this, 30, HUD_H + 20, 330, H - HUD_H - 40, { fill: 0x16202c, alpha: 0.96 });
     txt(this, 195, HUD_H + 44, t('wardrobe.preview'), 20, { bold: true, color: CSS.accent }).setOrigin(0.5, 0);
-    this.preview = this.add.image(195, H - 120, 'px').setOrigin(0.5, 1);
+    this.preview = this.add.sprite(195, H - 120, playerTexture(this, GameState.data.avatar, [], 'pose', PREVIEW_RES)).setOrigin(0.5, 1);
+    this.previewAnim = new CharAnimator(this.preview, { size: PREVIEW_SIZE, auto: true });
     this.countText = txt(this, 195, H - 100, '', 16, { color: CSS.dim }).setOrigin(0.5, 0);
     this.attemptText = txt(this, 195, H - 74, t('wardrobe.attempts', { n: GameState.data.wardrobeAttempts }), 14, { color: CSS.dim }).setOrigin(0.5, 0);
 
@@ -129,8 +135,13 @@ export class WardrobeScene extends Phaser.Scene {
 
   refresh() {
     for (const c of this.cards) c.setSelected(this.selected.has(c.id));
-    const key = playerTexture(this, GameState.data.avatar, [...this.selected], 4);
-    this.preview.setTexture(key);
+    const old = this.preview.texture.key;
+    const key = playerTexture(this, GameState.data.avatar, [...this.selected], 'pose', PREVIEW_RES);
+    if (key !== old) {
+      this.previewAnim.setTexture(key);
+      // these big previews are only needed here; don't let every combination pile up
+      this.textures.remove(old);
+    }
     this.countText.setText(t('wardrobe.selected', { n: this.selected.size }));
   }
 

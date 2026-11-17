@@ -5,6 +5,7 @@ import { t } from '../i18n/index.js';
 import { Settings } from '../state/Settings.js';
 import { Sound } from '../audio/Sound.js';
 import { GameState } from '../state/GameState.js';
+import { PORTRAIT_SIZE } from '../art/textures.js';
 
 const BOX_H = 188;
 const BOX_Y = H - BOX_H - 12;
@@ -30,7 +31,11 @@ export class DialogBox {
     this.catcher = s.add.rectangle(0, 0, W, H, 0x000000, 0.001).setOrigin(0).setDepth(this.depth).setInteractive();
     this.catcher.on('pointerup', () => this.advance());
     this.bg = panel(s, 16, BOX_Y, W - 32, BOX_H, { fill: 0x16202c, border: 0x4a6386, radius: 16 }).setDepth(this.depth + 1);
-    this.portrait = s.add.image(36 + 64, BOX_Y + 22 + 64, 'portrait_hs').setDepth(this.depth + 2);
+    this.portrait = s.add.image(36 + 64, BOX_Y + 22 + 64, 'portrait_hs', 'idle').setDepth(this.depth + 2);
+    this.portrait.setDisplaySize(PORTRAIT_SIZE, PORTRAIT_SIZE);
+    // portraits blink, and move their mouth while a line is typed out
+    this.blinkIn = 1500;
+    this.portraitTimer = s.time.addEvent({ delay: 80, loop: true, callback: () => this.animatePortrait(80) });
     this.name = txt(s, 0, BOX_Y + 16, '', 21, { bold: true, color: CSS.accent }).setDepth(this.depth + 2);
     this.title = txt(s, 0, BOX_Y + 20, '', 16, { color: CSS.dim }).setDepth(this.depth + 2);
     this.body = txt(s, 0, BOX_Y + 52, '', 21, { wrap: 900, scalable: true, lineSpacing: 6 }).setDepth(this.depth + 2);
@@ -45,6 +50,8 @@ export class DialogBox {
   }
 
   setSpeaker(speaker) {
+    if (speaker !== this.speaker) this.setTalking(false);
+    this.speaker = speaker;
     let left = 40;
     if (speaker) {
       let key;
@@ -59,7 +66,8 @@ export class DialogBox {
         title = t(`npcs.${speaker}.title`);
       }
       if (key && this.scene.textures.exists(key)) {
-        this.portrait.setTexture(key).setVisible(true);
+        this.portrait.setTexture(key, this.scene.textures.get(key).has('idle') ? 'idle' : undefined).setVisible(true);
+        this.portrait.setDisplaySize(PORTRAIT_SIZE, PORTRAIT_SIZE);
         left = 182;
       } else {
         this.portrait.setVisible(false);
@@ -76,6 +84,30 @@ export class DialogBox {
     this.body.setX(left);
     this.body.setY(speaker ? BOX_Y + 52 : BOX_Y + 28);
     this.body.setWordWrapWidth(W - 32 - left - 40, true);
+  }
+
+  /** Tell the scene who is talking, so a character in the world can move their mouth too. */
+  setTalking(on) {
+    if (this.talkingNow === on) return;
+    this.talkingNow = on;
+    this.scene.events.emit('dialog-talk', this.speaker, on);
+  }
+
+  animatePortrait(dt) {
+    const p = this.portrait;
+    if (!p.visible || !p.texture.has('talk_0')) return;
+    let frame = 'idle';
+    if (this.talkingNow && this.speaker !== 'player') {
+      const r = Math.random();
+      frame = r < 0.3 ? 'idle' : r < 0.65 ? 'talk_0' : 'talk_1';
+    } else {
+      this.blinkIn -= dt;
+      if (this.blinkIn <= 0) {
+        frame = 'blink';
+        if (this.blinkIn < -110) this.blinkIn = 1800 + Math.random() * 3500;
+      }
+    }
+    if (p.frame.name !== frame) p.setFrame(frame, false, false);
   }
 
   fitBody() {
@@ -95,11 +127,18 @@ export class DialogBox {
     this.fitBody();
     this.shownAt = this.scene.time.now;
     if (this.typer) this.typer.remove();
+    if (this.talkTimer) this.talkTimer.remove();
+    this.talkTimer = null;
     if (Settings.get('textSpeed') === 'instant') {
       this.typing = false;
       this.more.setVisible(true);
+      if (!this.choosing) {
+        this.setTalking(true);
+        this.talkTimer = this.scene.time.delayedCall(Math.min(2500, 300 + text.length * 25), () => this.setTalking(false));
+      }
       return;
     }
+    this.setTalking(true);
     this.typing = true;
     this.more.setVisible(false);
     let i = 0;
@@ -123,6 +162,9 @@ export class DialogBox {
     this.typing = false;
     this.body.setText(this.full);
     this.more.setVisible(!this.choosing);
+    if (this.talkTimer) this.talkTimer.remove();
+    this.talkTimer = null;
+    this.setTalking(false);
   }
 
   advance() {
@@ -223,6 +265,9 @@ export class DialogBox {
   hide() {
     if (this.typer) this.typer.remove();
     this.typer = null;
+    if (this.talkTimer) this.talkTimer.remove();
+    this.talkTimer = null;
+    this.setTalking(false);
     this.resolveLine = null;
     this.setVisible(false);
     if (this.group) this.focus.pop(this.group);
@@ -231,6 +276,7 @@ export class DialogBox {
 
   destroy() {
     this.hide();
+    this.portraitTimer.remove();
     for (const o of [this.catcher, this.bg, this.portrait, this.name, this.title, this.body, this.more]) o.destroy();
   }
 }

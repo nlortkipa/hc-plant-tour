@@ -5,6 +5,7 @@ import { ZONES, TOUR_ZONES, nextLocation } from '../data/zones.js';
 import { PPE_BY_ID, HAZARD_PPE, checkPpe } from '../data/ppe.js';
 import { GameState } from '../state/GameState.js';
 import { Player } from '../world/Player.js';
+import { CharAnimator } from '../world/CharAnimator.js';
 import { DialogBox, askQuestion } from '../ui/DialogBox.js';
 import { FocusManager } from '../ui/Focus.js';
 import { Button } from '../ui/Button.js';
@@ -44,14 +45,18 @@ export class ZoneScene extends Phaser.Scene {
     // zone PPE already put on earlier (revisit)
     if (this.zs.ppeDone) for (const hz of this.zone.hazards) this.worn.add(HAZARD_PPE[hz]);
 
-    this.player = new Player(this, L.spawn.x, L.spawn.y, this.playerKey());
+    this.player = new Player(this, L.spawn.x, L.spawn.y, this.playerKey(), { dust: L.floor !== 'tiles' });
     this.physics.add.collider(this.player, this.solids);
     this.updateWorn();
 
     // NPC
     const np = L.npcPos;
-    this.npc = this.add.image(np.x, np.y, `npc_${this.zone.npc}`).setOrigin(0.5, 1).setDepth(np.y);
-    this.tweens.add({ targets: this.npc, scaleY: 1.02, yoyo: true, repeat: -1, duration: 1100, ease: 'Sine.easeInOut' });
+    this.npc = this.add.sprite(np.x, np.y, `npc_${this.zone.npc}`).setOrigin(0.5, 1).setDepth(np.y);
+    this.npcAnim = new CharAnimator(this.npc, { auto: true });
+    // the manager's mouth moves while their line is being typed out
+    const onTalk = (speaker, on) => this.npcAnim.setTalking(on && speaker === this.zone.npc);
+    this.events.on('dialog-talk', onTalk);
+    this.events.once('shutdown', () => this.events.off('dialog-talk', onTalk));
 
     this.dialog = new DialogBox(this, this.focus, { playerPortrait: ensurePlayerPortrait(this, GameState.data.avatar, this.visibleItems()) });
     this.buildInteractables();
@@ -361,7 +366,7 @@ export class ZoneScene extends Phaser.Scene {
   // ------------------------------------------------------------------ loop
   update(time, delta) {
     this.player.update(time, delta);
-    this.npc.setFlipX(this.player.x < this.npc.x);
+    this.updateNpcFacing();
 
     // nearest interactable
     let best = null;
@@ -393,6 +398,7 @@ export class ZoneScene extends Phaser.Scene {
         this.pending = null;
         this.player.freeze(false);
         this.player.target = null;
+        this.player.faceTowards(it.x, it.y);
         this.run(it.action);
       } else if (!this.player.target) {
         this.pending = null;
@@ -407,11 +413,22 @@ export class ZoneScene extends Phaser.Scene {
     }
   }
 
+  /** The manager turns to the player when they are off to one side, otherwise looks ahead. */
+  updateNpcFacing() {
+    const dx = this.player.x - this.npc.x;
+    const dy = this.player.y - this.npc.y;
+    const a = this.npcAnim;
+    const sideNow = a.dir === 'side';
+    if (Math.abs(dx) > (sideNow ? 40 : 60) && Math.abs(dx) > Math.abs(dy) * (sideNow ? 0.6 : 0.9)) a.face('side', dx < 0);
+    else a.face('down');
+  }
+
   tapItem(it) {
     if (this.busy) return;
     if (it.enabled && !it.enabled()) return;
     const d = Phaser.Math.Distance.Between(this.player.x, this.player.y, it.x, it.y);
     if (d < RANGE) {
+      this.player.faceTowards(it.x, it.y);
       this.run(it.action);
     } else {
       this.pending = it;
@@ -421,6 +438,7 @@ export class ZoneScene extends Phaser.Scene {
 
   interact() {
     if (this.busy || !this.near) return;
+    this.player.faceTowards(this.near.x, this.near.y);
     this.run(this.near.action);
   }
 

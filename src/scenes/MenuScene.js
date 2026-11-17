@@ -6,6 +6,7 @@ import { Button } from '../ui/Button.js';
 import { FocusManager } from '../ui/Focus.js';
 import { GameState } from '../state/GameState.js';
 import { Router } from '../Router.js';
+import { CharAnimator } from '../world/CharAnimator.js';
 
 export class MenuScene extends Phaser.Scene {
   constructor() {
@@ -19,8 +20,8 @@ export class MenuScene extends Phaser.Scene {
     // decorative characters
     const npcs = ['hs', 'crushing', 'kiln', 'ccr', 'packing'];
     npcs.forEach((n, i) => {
-      const img = this.add.image(70 + i * 50, 640 - (i % 2) * 10, `npc_${n}`).setOrigin(0.5, 1).setScale(1.6);
-      this.tweens.add({ targets: img, y: img.y - 4, yoyo: true, repeat: -1, duration: 900 + i * 120, ease: 'Sine.easeInOut' });
+      const img = this.add.sprite(70 + i * 50, 640 - (i % 2) * 10, `npc_${n}`).setOrigin(0.5, 1);
+      new CharAnimator(img, { size: 1.6, auto: true, lookAround: true });
     });
 
     panel(this, W / 2 - 330, 90, 660, 540, { fill: 0x121a24, alpha: 0.92, border: 0xf2b705 });

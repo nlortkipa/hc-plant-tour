@@ -68,7 +68,7 @@ export class PathMission extends MissionBase {
     });
 
     const items = (GameState.data.wardrobe || []).filter((id) => !PPE_BY_ID[id]?.carry).concat(['earmuffs', 'respirator']);
-    this.player = new Player(this, CHECKPOINTS[0].x, CHECKPOINTS[0].y, playerTexture(this, GameState.data.avatar, items));
+    this.player = new Player(this, CHECKPOINTS[0].x, CHECKPOINTS[0].y, playerTexture(this, GameState.data.avatar, items), { dust: true });
     this.stage = 0;
     this.invuln = 0;
 

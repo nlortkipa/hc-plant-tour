@@ -3,7 +3,8 @@ import { W, H, HUD_H } from '../config.js';
 import { ZONES } from '../data/zones.js';
 import { makeCanvas, fillRR, rr, shade, warnSign, stripes, label, railing, cylV, box3, cylH, shadowEllipse } from './draw.js';
 import { paintFloor, paintBackdrop, paintWalkway, paintProp, paintTruck, pedIcon } from './props.js';
-import { characterCanvas, portraitCanvas, drawCharacter, NPC_LOOKS, AVATARS, playerLook } from './characters.js';
+import { characterSheet, portraitSheet, drawCharacter, NPC_LOOKS, playerLook } from './characters.js';
+import { getRenderScale } from '../display.js';
 
 function add(scene, key, canvas) {
   if (scene.textures.exists(key)) scene.textures.remove(key);
@@ -11,25 +12,53 @@ function add(scene, key, canvas) {
 }
 
 // ---------------------------------------------------------------------------- characters
+// Characters are sprite sheets (see characters.js) rendered at CHAR_RES device pixels per
+// scene unit so they stay sharp on high-DPI screens. Sprites using them must be scaled by
+// 1 / res (charScale) to appear at their normal size.
+export const CHAR_RES = Math.min(3, Math.max(2, Math.ceil(getRenderScale())));
+export const PORTRAIT_SIZE = 128;
+const PORTRAIT_RES = Math.min(3, Math.max(1, Math.ceil(getRenderScale())));
+
+function addSheet(scene, key, { canvas, frames }) {
+  add(scene, key, canvas);
+  const tex = scene.textures.get(key);
+  for (const f of frames) tex.add(f.name, 0, f.x, f.y, f.w, f.h);
+}
+
 export function charKey(look) {
   return 'char_' + JSON.stringify(look).replace(/[^a-z0-9]/gi, '').slice(0, 180);
 }
 
-/** Ensures a character texture exists for this look and returns its key. */
-export function ensureCharTexture(scene, look, scale = 1) {
-  const key = charKey(look) + (scale !== 1 ? `_x${scale}` : '');
-  if (!scene.textures.exists(key)) add(scene, key, characterCanvas(look, scale));
+/** Display scale for a character sheet so it appears `size` times its natural size. */
+export function charScale(scene, key, size = 1) {
+  return size / (scene.textures.get(key).customData.res || 1);
+}
+
+/**
+ * Ensures an animated character sheet exists for this look and returns its key.
+ * preset: 'walker' (walks in 3 directions), 'npc' (stands, turns, talks), 'pose' (front idle).
+ */
+export function ensureCharSheet(scene, look, preset = 'walker', res = CHAR_RES) {
+  const key = `${charKey(look)}_${preset}_r${res}`;
+  if (!scene.textures.exists(key)) {
+    addSheet(scene, key, characterSheet(look, preset, res));
+    scene.textures.get(key).customData.res = res;
+  }
   return key;
 }
 
-export function playerTexture(scene, avatar, items, scale = 1) {
-  return ensureCharTexture(scene, playerLook(avatar, items), scale);
+export function playerTexture(scene, avatar, items, preset = 'walker', res = CHAR_RES) {
+  return ensureCharSheet(scene, playerLook(avatar, items), preset, res);
+}
+
+function ensurePortrait(scene, key, look, bg) {
+  if (!scene.textures.exists(key)) addSheet(scene, key, portraitSheet(look, PORTRAIT_SIZE * PORTRAIT_RES, bg));
+  return key;
 }
 
 export function ensurePlayerPortrait(scene, avatar, items) {
   const key = `portrait_player_${avatar}_${[...items].sort().join('-')}`;
-  if (!scene.textures.exists(key)) add(scene, key, portraitCanvas(playerLook(avatar, items), 128, '#3b4a5e'));
-  return key;
+  return ensurePortrait(scene, key, playerLook(avatar, items), '#3b4a5e');
 }
 
 // ---------------------------------------------------------------------------- icons
@@ -615,10 +644,11 @@ export function generateAll(scene) {
   for (const hz of ['noise', 'dust', 'heat', 'truck', 'bang', 'fire', 'gas']) add(scene, `warn_${hz}`, icon(96, (ctx, s) => warnSign(ctx, s / 2, s / 2 + 4, s * 0.92, hz)));
 
   for (const [id, look] of Object.entries(NPC_LOOKS)) {
-    add(scene, `npc_${id}`, characterCanvas(look));
-    add(scene, `portrait_${id}`, portraitCanvas(look));
+    if (scene.textures.exists(`npc_${id}`)) scene.textures.remove(`npc_${id}`);
+    addSheet(scene, `npc_${id}`, characterSheet(look, 'npc', CHAR_RES));
+    scene.textures.get(`npc_${id}`).customData.res = CHAR_RES;
+    ensurePortrait(scene, `portrait_${id}`, look, '#2b3a4e');
   }
-  AVATARS.forEach((a, i) => add(scene, `avatar_${i}`, characterCanvas(playerLook(i, []), 2)));
 
   add(scene, 'disk_pulley', spinDisk(56, '#6b7580', 3));
   add(scene, 'disk_coupling', spinDisk(44, '#c0c6cc', 6));

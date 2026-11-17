@@ -6,6 +6,9 @@ import { Button } from '../ui/Button.js';
 import { FocusManager } from '../ui/Focus.js';
 import { GameState } from '../state/GameState.js';
 import { AVATARS } from '../art/characters.js';
+import { playerTexture } from '../art/textures.js';
+import { CharAnimator } from '../world/CharAnimator.js';
+import { getRenderScale } from '../display.js';
 import { Router } from '../Router.js';
 import { FONT } from '../config.js';
 
@@ -18,7 +21,10 @@ class AvatarCard extends Phaser.GameObjects.Container {
     this.onPick = onPick;
     this.bg = scene.add.graphics();
     this.add(this.bg);
-    this.add(scene.add.image(0, 10, `avatar_${index}`).setOrigin(0.5));
+    const key = playerTexture(scene, index, [], 'pose', Math.min(6, Math.ceil(2 * getRenderScale())));
+    const fig = scene.add.sprite(0, 10 + 84, key).setOrigin(0.5, 1);
+    new CharAnimator(fig, { size: 2, auto: true });
+    this.add(fig);
     this.add(txt(scene, 0, 112, t('character.avatar', { n: index + 1 }), 16, { color: CSS.dim }).setOrigin(0.5));
     this.setSize(170, 260);
     this.setInteractive({ useHandCursor: true });
