@@ -521,10 +521,14 @@ export class ZoneScene extends Phaser.Scene {
       d.ppeErrors = (d.ppeErrors || 0) + errors;
       GameState.mistake('ppe', errors);
       Sound.play('wrong');
-      const lines = [t('zones.kpp.checkFailIntro')];
-      for (const id of check.wrong) lines.push(t('zones.kpp.checkWrong', { item: t(`ppe.${id}.name`), why: t(`ppe.${id}.why`) }));
-      for (const id of check.missing) lines.push(t('zones.kpp.checkMissing', { item: t(`ppe.${id}.name`), why: t(`ppe.${id}.why`) }));
-      lines.push(t('zones.kpp.checkFailOutro'));
+      // A wrong item already explains what belongs in its slot (sneakers → boots), so skip the
+      // matching "missing" message to avoid saying the same thing twice.
+      const wrongSlots = new Set(check.wrong.map((id) => PPE_BY_ID[id].slot));
+      const lines = [
+        ...check.wrong.map((id) => t(`zones.kpp.checkFail.${id}.wrong`)),
+        ...check.missing.filter((id) => !wrongSlots.has(PPE_BY_ID[id].slot)).map((id) => t(`zones.kpp.checkFail.${id}.missing`)),
+      ];
+      lines[0] = t('zones.kpp.checkFailGreeting', { message: lines[0] });
       await this.dialog.say('hs', lines);
       await this.dialog.choose('hs', t('zones.kpp.checkFailOutro'), [{ id: 'back', text: t('zones.kpp.backToWardrobe') }]);
       this.dialog.hide();
