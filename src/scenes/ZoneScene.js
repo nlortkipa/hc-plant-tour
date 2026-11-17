@@ -594,7 +594,9 @@ export class ZoneScene extends Phaser.Scene {
       Sound.play('open');
       const res = build(close);
       objs = res.objs;
-      objs.forEach((o) => o.setDepth(3001));
+      // Stack in array order (not creation order): builders may create text before
+      // the panel behind it, e.g. to measure the text and size the panel to fit.
+      objs.forEach((o, i) => o.setDepth(3001 + i * 0.01));
       group = this.focus.push(res.focus || [], { onCancel: res.cancellable === false ? null : () => close() });
     });
   }
