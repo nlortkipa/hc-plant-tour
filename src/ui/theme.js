@@ -1,4 +1,5 @@
-import { FONT, CSS } from '../config.js';
+import { FONT, CSS, W, H } from '../config.js';
+import { getRenderScale } from '../display.js';
 import { Settings } from '../state/Settings.js';
 
 /** Create a text object with the game font. `opts.scalable` applies the player's text-size setting. */
@@ -11,6 +12,7 @@ export function txt(scene, x, y, str, size = 20, opts = {}) {
     fontStyle: opts.bold ? 'bold' : 'normal',
     align: opts.align || 'left',
     lineSpacing: opts.lineSpacing ?? Math.round(size * 0.25),
+    resolution: getRenderScale(),
   };
   if (opts.wrap) style.wordWrap = { width: opts.wrap, useAdvancedWrap: true };
   if (opts.stroke) {
@@ -44,7 +46,7 @@ export function panel(scene, x, y, w, h, opts = {}) {
 
 /** Full-screen dimmer that swallows input beneath a modal. */
 export function blocker(scene, alpha = 0.6, onClick) {
-  const r = scene.add.rectangle(0, 0, scene.scale.width, scene.scale.height, 0x05080c, alpha).setOrigin(0);
+  const r = scene.add.rectangle(0, 0, W, H, 0x05080c, alpha).setOrigin(0);
   r.setInteractive();
   if (onClick) r.on('pointerdown', onClick);
   return r;

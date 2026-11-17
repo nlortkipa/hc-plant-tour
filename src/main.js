@@ -1,8 +1,9 @@
 import Phaser from 'phaser';
 import '@fontsource/noto-sans-georgian/400.css';
 import '@fontsource/noto-sans-georgian/700.css';
-import { W, H, COLORS } from './config.js';
+import { COLORS } from './config.js';
 import { Router } from './Router.js';
+import { HiDpiPlugin, canvasSize, watchResize } from './display.js';
 import { Sound } from './audio/Sound.js';
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
@@ -43,13 +44,13 @@ async function start() {
   const game = new Phaser.Game({
     type: Phaser.AUTO,
     parent: 'game',
-    width: W,
-    height: H,
+    ...canvasSize(),
     backgroundColor: COLORS.bg,
     scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
     dom: { createContainer: true },
     physics: { default: 'arcade', arcade: { debug: false } },
     input: { activePointers: 2 },
+    plugins: { scene: [{ key: 'HiDpi', plugin: HiDpiPlugin }] },
     scene: [
       BootScene, MenuScene, CharacterScene, WardrobeScene, ZoneScene,
       PathMission, SpotMission, DecisionMission, AlarmMission, MatchMission, PalletMission, LoadingMission,
@@ -57,6 +58,7 @@ async function start() {
       MapScene, SettingsScene, HelpScene, InventoryScene, ConfirmScene,
     ],
   });
+  watchResize(game);
   Router.init(game);
   // Debug handles (handy for QA from the browser console).
   window.__game = game;
