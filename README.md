@@ -1,6 +1,6 @@
 # hc-plant-tour
 
-HTML5 cement plant safety tour game for Heidelberg Cement. This MVP is a browser-playable build made with [Phaser 4](https://phaser.io) + [Vite](https://vite.dev). It is not yet packaged as SCORM for Talent LMS (see [Not implemented](#not-implemented-yet)).
+HTML5 cement plant safety tour game for Heidelberg Cement. This MVP is a browser-playable build made with [Phaser 4](https://phaser.io) + [Vite](https://vite.dev). `npm run package` turns it into a SCORM 1.2 zip for TalentLMS (see [SCORM package](#scorm-package-talentlms)).
 
 ## Documentation
 
@@ -13,6 +13,7 @@ npm install
 npm run dev        # dev server with hot reload → http://localhost:5173
 npm run build      # production build → dist/
 npm run preview    # serve the production build → http://localhost:4173
+npm run package    # build + SCORM 1.2 zip → release/hc-plant-tour-scorm-<version>.zip
 ```
 
 The build in `dist/` is fully self-contained. Phaser, the Georgian font (Noto Sans Georgian via `@fontsource`), the art and the audio are all bundled or generated at runtime, so there are no requests to external servers. The asset base is relative (`./`), which means `dist/` can be served from any folder.
@@ -83,6 +84,7 @@ src/
   i18n/                t() helper + ka.js (all texts)
   data/                zones (order, NPC, hazards, layouts), PPE, missions, final test (ids + answers only)
   state/               GameState (progress/score/mistakes; pluggable storage adapter), Settings
+  lms/                 SCORM 1.2 connection (LMS API lookup, cmi.* reporting, suspend_data storage)
   audio/Sound.js       Web Audio synthesiser: background music + sound effects (no audio files)
   art/                 procedural Canvas2D art: characters, machines, zone backgrounds, boards, certificate
   ui/                  Button, FocusManager (keyboard nav), DialogBox, QuizCard, Toast, Tile
@@ -93,12 +95,26 @@ src/
 
 For QA, the browser console exposes `window.__state` (progress), `window.__router` (for example `__router.goTo('kiln')`) and `window.__game`.
 
+## SCORM package (TalentLMS)
+
+`npm run package` builds the game and writes `release/hc-plant-tour-scorm-<version>.zip` (SCORM 1.2, `imsmanifest.xml` at the zip root). To publish it, a TalentLMS admin or instructor opens a course, chooses **Add → SCORM | xAPI | cmi5** and uploads the zip. To test outside TalentLMS first, upload the same zip to [SCORM Cloud](https://cloud.scorm.com) (free account), which logs every LMS call.
+
+When launched from an LMS, `src/lms/scorm.js` finds the LMS `API` object and becomes the `GameState` storage adapter. Without an LMS (dev server, plain hosting), the game falls back to `localStorage`.
+
+| SCORM field | Value |
+|---|---|
+| `cmi.suspend_data` | the `GameState` JSON, so the learner resumes where they left off (about 1.6 KB for a full playthrough, limit 4096) |
+| `cmi.core.lesson_status` | `incomplete` until the final test is done, then `passed` / `failed` (`GameState.lessonStatus()`) |
+| `cmi.core.score.raw` (min 0, max 100) | `GameState.percent()`, sent only once the final test is done so no partial score is recorded |
+| `cmi.core.lesson_location` | current location id |
+| `cmi.core.session_time` | wall-clock time of this session |
+| `cmi.core.exit` | `suspend` until passed |
+
+Saves are batched into one `LMSCommit` every 2 s at most, and the session is closed (`LMSFinish`) when the page is closed. A learner who has passed stays `passed` with their passing score if they replay the course.
+
 ## Not implemented (yet)
 
-- **SCORM / LMS integration.** There is no `imsmanifest.xml` or zip packaging, and no `cmi.*` communication (`lesson_status`, `score.raw/min/max`, `session_time`, `suspend_data`, `lesson_location`, `interactions`). Progress is saved to the browser's `localStorage` instead. The code is prepared for this:
-  - `GameState` uses a storage adapter (`read`/`write`/`clear`), so a SCORM adapter can store the same JSON in `cmi.suspend_data`. SCORM 1.2 limits this to 4096 characters, which the current state fits.
-  - `GameState.percent()`, `lessonStatus()` (`incomplete`/`passed`/`failed`), `data.location` and `data.timeMs` map directly to `score.raw`, `lesson_status`, `lesson_location` and `session_time`.
-  - Per-question answers (`data.final.answers`, `data.scores`) are ready to report as `cmi.interactions`.
+- **`cmi.interactions`.** Per-question answers (`data.final.answers`, `data.scores`) are not reported to the LMS. They are optional in the spec and only partly shown by TalentLMS.
 - **Final art and branding.** All graphics are procedurally drawn placeholders (flat vector style). There is no company logo, brand colours or photos (these need approval from the communications team), and the zone layouts are not modelled on the real plant.
 - **Real content validation.**
   - NPC names are fictional placeholders.

@@ -1,10 +1,11 @@
-// Single source of truth for player progress. Persisted through a pluggable storage adapter
-// (localStorage in this MVP). A SCORM adapter would map the same JSON to cmi.suspend_data and
-// the derived values (score, status, location, session time) to the matching cmi.* fields.
+// Single source of truth for player progress. Persisted through a pluggable storage adapter:
+// the SCORM session when launched from an LMS (JSON in cmi.suspend_data, plus score, status and
+// location reported to cmi.core.*), otherwise localStorage.
 
 import { LOCATIONS, TOUR_ZONES, ZONES } from '../data/zones.js';
 import { FINAL_QUESTIONS } from '../data/finalTest.js';
 import { SCORING, PASS_THRESHOLD, STORAGE_KEY } from '../config.js';
+import { connect as connectScorm } from '../lms/scorm.js';
 
 const localStorageAdapter = {
   read() {
@@ -105,6 +106,7 @@ class GameStateStore {
 
   save() {
     this.adapter.write(this.data);
+    this.adapter.report?.(this);
     this.emit();
   }
 
@@ -233,4 +235,5 @@ class GameStateStore {
   }
 }
 
-export const GameState = new GameStateStore(localStorageAdapter);
+export const lms = connectScorm();
+export const GameState = new GameStateStore(lms || localStorageAdapter);
